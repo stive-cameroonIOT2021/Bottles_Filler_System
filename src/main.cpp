@@ -52,9 +52,6 @@ bool reverseDirection_Z = true;  // Normal direction for Z-axis (stepper2)
 bool reverseLimitSwitchLogic_X = true;  // Reverse logic for X-axis (stepper1)
 bool reverseLimitSwitchLogic_Z = false; // Normal logic for Z-axis (stepper2)
 /* ---------------------------------------------------------------------------------------- */
-#define Relay_WaterPump A1 // Pin for water pump relay
-/* ---------------------------------------------------------------------------------------- */
-#define Buzzer A6 // Pin for buzzer
 #define Push_Btn 12
 /* ---------------------------------------------------------------------------------------- */
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -62,8 +59,10 @@ LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars
 // Servo motor setup 
 #define SERVO_PIN_UP 11 // Pin for servo motor
 #define SERVO_PIN_DOWN 13 // Pin for servo motor
+#define SERVO_PIN_PUSH 2 // Pin for servo motor to push the bottle
 Servo servoMotor_up; // Create a Servo object
 Servo servoMotor_down; // Create a Servo object
+Servo PushServo; //create servo object to push the bottle
 /* ---------------------------------------------------------------------------------------- */
 // States
 enum State {
@@ -86,23 +85,10 @@ const unsigned long cappingDuration = 2000;
 /* ---------------------------------------------------------------------------------------- */
 const int bottlePresentSensorPin = A0;
 /* ---------------------------------------------------------------------------------------- */
-//const int waterflowsensorPin = 2; // Pin for water flow sensor
-/* ---------------------------------------------------------------------------------------- */
 const int ConvoyMotor = A2; // Pin for valve control
 const int IrsensorPin = A3; // Pin for IR sensor
 /* ---------------------------------------------------------------------------------------- */
-const int cappingMotorPin = 2; // Pin for capping motor (DC motor)
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------- */
+const int cappingMotorPin = A1; // Pin for capping motor (DC motor)
 
 
 
@@ -128,13 +114,11 @@ void setup() {
     pinMode(ConvoyMotor, OUTPUT); // Set valve control pin as output
     digitalWrite(ConvoyMotor, HIGH); // Turn off the convoyor initially
 
-    pinMode(Relay_WaterPump, OUTPUT); // Set water pump relay pin as output
-    digitalWrite(Relay_WaterPump, HIGH); // Turn off the water pump initially
+    //pinMode(Relay_WaterPump, OUTPUT); // Set water pump relay pin as output
+    //digitalWrite(Relay_WaterPump, HIGH); // Turn off the water pump initially
 
     pinMode(cappingMotorPin, OUTPUT); // Set capping motor pin as output
     digitalWrite(cappingMotorPin, HIGH); // Turn off the capping motor initially
-
-    pinMode(Buzzer, OUTPUT); // Set buzzer pin as output
     Serial.begin(115200);
 
     lcd.init();
@@ -153,6 +137,9 @@ void setup() {
 
     servoMotor_down.attach(SERVO_PIN_DOWN); // Attach the servo motor to the specified pin
     servoMotor_down.write(0); // Set initial position of the servo motor
+
+    PushServo.attach(SERVO_PIN_PUSH); // Attach the servo motor to the specified pin
+    PushServo.write(90); // Set initial position of the servo motor
 
     // Homing Stepper 1 to the left
      DEBUG_PRINTLN("Homing Stepper 1 to the left...");
@@ -186,7 +173,7 @@ void setup() {
 void loop() {
     // ✅ Step 1: Wait for bottle at fill point
     // ✅ Step 2: After t sec → Servo grabs bottle
-    // ✅ Step 3: Fill bottle (until sensor says full)
+    // ✅ Step 3: Wait for button press to continue
     // ✅ Step 4: X-stepper → move to capping station
     // ✅ Step 5: Z-stepper → move down to cap when down dc motor spin to cap
     // ✅ Step 6: After cappingDuration → Z-stepper homes (Z = 0)
@@ -298,7 +285,11 @@ else if(currentState == MOVE_TO_DROP){
     servoMotor_up.write(0); // Move servo to drop position
     servoMotor_down.write(0);// Move servo to drop position
     moveStepperAndCheckLimit(stepper1, 300.0, RIGHT_LIMIT_1, LEFT_LIMIT_1); // Move back to drop station
-    delay(4000); // Simulate waiting time
+    delay(2000); // Simulate waiting time
+    PushServo.write(180); // Move servo to push position
+    delay(4000); // Simulate pushing time
+    PushServo.write(90); // Move servo back to neutral position
+    delay(2000); // Simulate waiting time
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Bottle Filler");
